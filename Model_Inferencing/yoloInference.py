@@ -14,7 +14,7 @@ cocoData    =   'cfg\coco.data'
 cfgFile     =   'cfg\yolov4.cfg'
 weightPath  =   'C:\DS_ML\Video_Analytics_YOLOv4\Database_n_Files\yolov4.weights'
 vidPath     =   'C:\DS_ML\Video_Analytics_YOLOv4\Database_n_Files\Test_Video.mp4'
-rootDir     =   'C:\DS_ML\Video_Analytics_YOLOv4'
+rootDir     =   os.path.dirname(os.path.abspath(__file__))
 
 
 
