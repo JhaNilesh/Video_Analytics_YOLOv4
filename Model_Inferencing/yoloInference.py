@@ -1,6 +1,6 @@
-'''
-TODO:   Verify Weight file and Video file path after parsing arguments
-'''
+"""yoloInference.py: Program for inferencing YOLOv4 on videos and/or saving detections in database"""
+__author__ = 'Nilesh Jha'
+__email__ = "nilesh2sonu@gmail.com"
 
 import os
 import subprocess
@@ -84,3 +84,7 @@ if __name__ == '__main__':
     # detVidBB(vidPath)
     saveInf(vidPath)
 
+
+'''
+TODO:   Verify Weight file and Video file path after parsing arguments
+'''
