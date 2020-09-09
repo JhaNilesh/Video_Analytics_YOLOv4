@@ -4,98 +4,84 @@ TODO:   Verify Weight file and Video file path after parsing arguments
 
 import os
 import subprocess
-import cv2
 import pandas as pd
+import re
 import sqlite3
 
+# As 'darknet detector test' expects a image path, for videos, every single frame mist be saved as image, its path
+# must be read and then the detector will generate bounding box and coordinates. This process is takes a long time,
+# as for a video of 1 minute of 60FPS, number of frames are 3600 which is a large number of file i/o. This is extremely
+# inefficient way to generate inference. Even generating inference on SSD drive for a 90 seconds clip took more than
+# 45 minutes and hence it completely overcomes the very virtue of YOLO, that is speed. We will inference video using
+# 'darknet detector demo'
+#
 
-darknetPath =   'darknet.exe'
+# rootDir     =   os.path.dirname(os.path.abspath('README.md'))
+rootDir     =   'C:\\DS_ML\\Video_Analytics_YOLOv4'
+darknetDir  =   os.path.join(rootDir, 'YOLOv4', 'darknet')
 cocoData    =   'cfg\coco.data'
 cfgFile     =   'cfg\yolov4.cfg'
-weightPath  =   'C:\DS_ML\Video_Analytics_YOLOv4\Database_n_Files\yolov4.weights'
-vidPath     =   'C:\DS_ML\Video_Analytics_YOLOv4\Database_n_Files\Test_Video.mp4'
-rootDir     =   os.path.dirname(os.path.abspath(__file__))
+weightPath  =   os.path.join(rootDir, 'Database_n_Files', 'yolov4.weights')
+detPath     =   os.path.join(rootDir, 'Database_n_Files')
 
-
-
-def runVid(vidPath):
+def detVidBB(vidPath, suffix='pretrain'):
     '''
-    This function run YOLOv4 inference on video
+    This function run YOLOv4 inference on video and saves detections data
+    (i.e bounding box and confidence scores) in the database
     :param vidPath: Path of video file
+    :param suffix:  Table name suffix. Possible values 'pretrain' and 'posttrain'
     :return: Error Message if any
     '''
-    os.chdir('C:\DS_ML\Video_Analytics_YOLOv4\YOLOv4\darknet')
-    yoloCmd = [darknetPath, 'detector', 'demo', cocoData, cfgFile, weightPath, vidPath, '-ext_output']
+    os.chdir(darknetDir)
+    yoloCmd = ['darknet.exe', 'detector', 'demo', cocoData, cfgFile, weightPath, vidPath, '-ext_output']
     vidrun = subprocess.run(yoloCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-    return(vidrun.stdout.decode())
+    detections = [line.decode().strip()
+                  for line in vidrun.stdout.splitlines()
+                  if ((line.decode().strip() != '') and
+                      (('Objects' in line.decode().strip()) or ('person' in line.decode().strip())))]
     os.chdir(rootDir)
 
-def detVidBB(vidPath):
-    '''
-    This function runs YOLOv4 detections on individual frame of the video,
-     parses detection data in tabular format and saves the detections in a
-     separate table in the database
-    :param vidPath: Path of video file
-    :return: Success/failure message
-    '''
-    os.chdir('C:\DS_ML\Video_Analytics_YOLOv4\YOLOv4\darknet')
-    objects = ('dog', 'truck', 'bicycle', 'pottedplant', 'person', 'handbag') # Object detections to be captured
-    column_names = ['object', 'confScore', 'left_x', 'top_y', 'width', 'height']
-    detectionDF = pd.DataFrame(columns = column_names)
-
-    yoloCmd = [darknetPath, 'detector', 'demo', cocoData, cfgFile, weightPath, vidPath, '-ext_output']
-    imageDetect = subprocess.run(yoloCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-    # print(imageDetect.stdout.decode())
-    # detection = [line.decode() for line in imageDetect.stdout.splitlines() if line.decode().startswith(objects)]
-    # df = pd.DataFrame([line.split() for line in detection])
-    # df.drop([2, 4, 6, 8], axis=1, inplace=True)
-    # df.columns = ['object', 'confScore', 'left_x', 'top_y', 'width', 'height']
-    # df['object'] = df['object'].str.strip(':')
-    # df['height'] = df['height'].str.strip(')')
-    # df['confScore'] = df['confScore'].str.strip('%').astype(float) / 100
-
-    '''
-    vidcap = cv2.VideoCapture(vidPath)
-    frame_count = 0
-    while(vidcap.isOpened()):
-
-        response, frame = vidcap.read()
-
-        if response == True:
-
-            yoloCmd = [darknetPath, 'detector', 'test', cocoData, cfgFile, weightPath, '-ext_output', '-dont_show', fr]
-            detfrm = subprocess.run(yoloCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-            detection = [line.decode() for line in detfrm.stdout.splitlines() if line.decode().startswith(objects)]
-            df = pd.DataFrame([line.split() for line in detection])
-            df.drop([2, 4, 6, 8], axis=1, inplace=True) # Dropping un-necessary columns
-            df.columns = column_names                                                   # Naming the columns
-            df['object'] = df['object'].str.strip(':')                                  # Removing un-necessary characters
-            df['height'] = df['height'].str.strip(')')                                  # Removing un-necessary characters
-            df['confScore'] = df['confScore'].str.strip('%').astype(float) / 100        # Converting confidence score as percentage
-            df['frameNo'] = frame_count
-            
-            detectionDF.append(df, ignore_index=True)
-
+    # Parsing detections, adding frame number based on 'Object' count, to the detection entries and generating DataFrame
+    frameCnt = 0
+    finalArr = []
+    for line in detections:
+        if line.startswith('Objects'):
+            frameCnt += 1
         else:
-            break
+            confScore   =   re.search('person:[ -]+(\d+)', line, re.IGNORECASE).group(1)
+            left_x      =   re.search('left_x:[ -]+(\d+)', line, re.IGNORECASE).group(1)
+            top_y       =   re.search('top_y:[ -]+(\d+)', line, re.IGNORECASE).group(1)
+            width       =   re.search('width:[ -]+(\d+)', line, re.IGNORECASE).group(1)
+            height      =   re.search('height:[ -]+(\d+)', line, re.IGNORECASE).group(1)
+            finalArr.append([frameCnt, 'person', confScore, left_x, top_y, width, height])
 
-        frame_count += 1
-    
-    vidcap.release()
-    '''
+    df = pd.DataFrame(finalArr, columns=['frameNo', 'object', 'confScore', 'left_x', 'top_y', 'width', 'height'])
 
+    tabName = vidPath.split('\\')[-1].split('.')[0] + '_'+ suffix
+    os.chdir('Database_n_Files')
+    connection = sqlite3.connect('videoAnalytics.db')                           # Open connection to database
+    df.to_sql(tabName, connection, if_exists='replace', index=False)            # Write detections in the table
     os.chdir(rootDir)
-    file = open('log.txt','w')
-    file.write(imageDetect.stdout.decode())
-    file.close()
-    # tabName = vidPath.split('\\')[-1].split('.')[0] + '_det'
-    # os.chdir('Database_n_Files')
-    # connection = sqlite3.connect('videoAnalytics.db')                           # Open connection to database
-    # df.to_sql(tabName, connection, if_exists='replace', index=False)            # Write detections in the table
-    # os.chdir(rootDir)
+
+
+def saveInf(vidPath):
+    '''
+    This function takes video as input and generates YOLOv4 annotated video file
+    :param vidPath: Video file path expected
+    :return: Error message if any
+    '''
+    os.chdir(darknetDir)
+    infVidName = vidPath.split('\\')[-1].split('.')[0] + '_inference.mp4'
+    infVidPath = os.path.join(rootDir, 'Database_n_Files', infVidName)
+    yoloCmd = ['darknet.exe', 'detector', 'demo', cocoData, cfgFile, weightPath, vidPath, '-out_filename', infVidPath]
+    vidrun = subprocess.run(yoloCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+    os.chdir(rootDir)
 
 
 
+if __name__ == '__main__':
 
-# print(runVid(vidPath))
-detVidBB(vidPath)
+    vidPath = os.path.join(rootDir, 'Database_n_Files', 'Test_Video.mp4')
+    # detVidBB(vidPath)
+    saveInf(vidPath)
+
