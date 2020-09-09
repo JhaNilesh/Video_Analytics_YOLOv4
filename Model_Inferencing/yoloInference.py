@@ -14,9 +14,8 @@ import sqlite3
 # inefficient way to generate inference. Even generating inference on SSD drive for a 90 seconds clip took more than
 # 45 minutes and hence it completely overcomes the very virtue of YOLO, that is speed. We will inference video using
 # 'darknet detector demo'
-#
 
-# rootDir     =   os.path.dirname(os.path.abspath('README.md'))
+# rootDir     =   os.path.dirname(os.path.abspath(__file__))   # use it for running on MAC/Linux
 rootDir     =   'C:\\DS_ML\\Video_Analytics_YOLOv4'
 darknetDir  =   os.path.join(rootDir, 'YOLOv4', 'darknet')
 cocoData    =   'cfg\coco.data'
