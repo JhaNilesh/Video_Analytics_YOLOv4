@@ -241,6 +241,61 @@ def genImgFrmVid(df, tgtfld):
         print('No. of images written for this video is {}'.format(frame_count))
 
 
+def miniBatchData(traindf, testdf, batches):
+    '''
+    This function can be used to divide large dataset into smaller chunks
+    :param traindf: Expects training data frame containing videos and annotation file path
+    :param testdf: Expects testing data frame containing videos and annotation file path
+    :param batches: Expects number of batches data needs to be split into
+    :return: Returns training and test dataframes with additional column containing batch number
+    '''
+    trainVidNo  =   len(traindf) // batches + 1
+    testVidNo   =   len(testdf) // batches + 1
+
+    trbatchno = [i for i in range(1 , batches+1) for vid in range(trainVidNo)]
+    traindf['batchno'] = trbatchno[:len(traindf)]
+
+    tebatchno = [i for i in range(1 , batches+1) for vid in range(testVidNo)]
+    testdf['batchno'] = tebatchno[:len(testdf)]
+
+    # # initialization
+    # batchcnt = 1
+    # vidcnt = 0
+    # traindf['batchno'] = 0
+    # for index, row in traindf.iterrows():
+    #     if vidcnt <= trainVidNo:
+    #         traindf.at[index, 'batchno'] = batchcnt
+    #         vidcnt += 1
+    #     else:
+    #         batchcnt += 1
+    #         traindf.at[index, 'batchno'] = batchcnt
+    #         vidcnt = 1
+    #
+    # # initialization
+    # batchcnt = 1
+    # vidcnt = 0
+    # testdf['batchno'] = 0
+    # for index, row in testdf.iterrows():
+    #     if vidcnt <= testVidNo:
+    #         testdf.at[index, 'batchno'] = batchcnt
+    #         vidcnt += 1
+    #     else:
+    #         batchcnt += 1
+    #         testdf.at[index, 'batchno'] = batchcnt
+    #         vidcnt = 1
+
+    # print(traindf.groupby(traindf['batchno']).count())
+    # print(traindf[traindf['batchno'] == 1])
+    # print(testdf.groupby(testdf['batchno']).count())
+    # print(testdf[testdf['batchno'] == 1])
+
+    return traindf, testdf
+
+
+
+
+
+
 
 if __name__ == '__main__':
     vidFolder   = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'
@@ -253,5 +308,7 @@ if __name__ == '__main__':
     # loadAnnotObj(df = testmd, tabname='testannot')
     # trainad, testad = readAnnotData()
     # print('Train data size:\t{}\nTest data size:\t{}'.format(trainad.shape[0], testad.shape[0]))
-    genImgFrmVid(df=trainmd, tgtfld=os.path.join(dataFolder, 'train'))
-    # genImageFrmVid(df=testmd, tgtfld=dataFolder, fldname='test')
+    trainmb, testmb = miniBatchData(traindf = trainmd, testdf = testmd, batches = 10)
+    print(trainmb[trainmb.batchno == 1], testmb[testmb.batchno == 1])
+    # genImgFrmVid(df=trainmb[trainmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'train'))
+    # genImgFrmVid(df=testmb[testmb.batchno == 1], tgtfld=dataFolder, fldname='test')
