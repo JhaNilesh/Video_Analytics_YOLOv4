@@ -251,56 +251,15 @@ def miniBatchData(traindf, testdf, batches):
     '''
     trainVidNo  =   len(traindf) // batches + 1
     testVidNo   =   len(testdf) // batches + 1
-
-    trbatchno = [i for i in range(1 , batches+1) for vid in range(trainVidNo)]
-    traindf['batchno'] = trbatchno[:len(traindf)]
-
-    tebatchno = [i for i in range(1 , batches+1) for vid in range(testVidNo)]
-    testdf['batchno'] = tebatchno[:len(testdf)]
-
-    # # initialization
-    # batchcnt = 1
-    # vidcnt = 0
-    # traindf['batchno'] = 0
-    # for index, row in traindf.iterrows():
-    #     if vidcnt <= trainVidNo:
-    #         traindf.at[index, 'batchno'] = batchcnt
-    #         vidcnt += 1
-    #     else:
-    #         batchcnt += 1
-    #         traindf.at[index, 'batchno'] = batchcnt
-    #         vidcnt = 1
-    #
-    # # initialization
-    # batchcnt = 1
-    # vidcnt = 0
-    # testdf['batchno'] = 0
-    # for index, row in testdf.iterrows():
-    #     if vidcnt <= testVidNo:
-    #         testdf.at[index, 'batchno'] = batchcnt
-    #         vidcnt += 1
-    #     else:
-    #         batchcnt += 1
-    #         testdf.at[index, 'batchno'] = batchcnt
-    #         vidcnt = 1
-
-    # print(traindf.groupby(traindf['batchno']).count())
-    # print(traindf[traindf['batchno'] == 1])
-    # print(testdf.groupby(testdf['batchno']).count())
-    # print(testdf[testdf['batchno'] == 1])
-
+    traindf['batchno']  = [i for i in range(1 , batches+1) for vid in range(trainVidNo)][:len(traindf)]
+    testdf['batchno']   = [i for i in range(1 , batches+1) for vid in range(testVidNo)][:len(testdf)]
     return traindf, testdf
-
-
-
-
-
 
 
 if __name__ == '__main__':
     vidFolder   = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'
     annotFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/annotations'
-    dataFolder  = 'C:\DS_ML\Video_Analytics_YOLOv4\Database_n_Files'
+    dataFolder  = 'C:/DS_ML/Video_Analytics_YOLOv4/Database_n_Files'
     # loadMetaData(vidFolder, annotFolder, dispWrt='writedb')
     trainmd, testmd = readMetaData()
     # print('Training videos:\t{}\nTesting videos:\t{}'.format(trainmd.shape[0], testmd.shape[0]))
@@ -309,6 +268,6 @@ if __name__ == '__main__':
     # trainad, testad = readAnnotData()
     # print('Train data size:\t{}\nTest data size:\t{}'.format(trainad.shape[0], testad.shape[0]))
     trainmb, testmb = miniBatchData(traindf = trainmd, testdf = testmd, batches = 10)
-    print(trainmb[trainmb.batchno == 1], testmb[testmb.batchno == 1])
+    # print(trainmb[trainmb.batchno == 1], testmb[testmb.batchno == 1])
     # genImgFrmVid(df=trainmb[trainmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'train'))
-    # genImgFrmVid(df=testmb[testmb.batchno == 1], tgtfld=dataFolder, fldname='test')
+    # genImgFrmVid(df=testmb[testmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'test'))
