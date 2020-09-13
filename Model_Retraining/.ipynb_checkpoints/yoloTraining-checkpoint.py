@@ -1,7 +1,7 @@
 """yoloInference.py: Program for building YOLOv4 training pipeline for videos"""
 __author__ = 'Nilesh Jha'
 __email__ = "nilesh2sonu@gmail.com"
-from DataWrangling_n_Exploration.yoloDataPrep import readMetaData
+from Model_Retraining.yoloDataPrep import readMetaData
 
 
 '''

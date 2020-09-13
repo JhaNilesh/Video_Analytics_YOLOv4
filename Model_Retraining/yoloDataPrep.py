@@ -16,6 +16,10 @@ from sklearn.model_selection import train_test_split
 import cv2
 import shutil
 
+vidFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'
+annotFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/annotations'
+dataFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/YOLOv4/darknet/build/darknet/x64/data'
+
 def pathLookup(clip, lst):
     '''
     This function looks up the clip name from a list of given path.
@@ -184,7 +188,7 @@ def readAnnotData():
     trvid = tsvid = 0
     if cursor.fetchall()[0][0] == 'trainannot':
         traindf = pd.read_sql("SELECT * FROM trainannot", connection)
-        print('Training annotaions table is present and contains {} frames'.format(traindf.shape[0]))
+        print('Training annotaions table is present and contains {} objects'.format(traindf.shape[0]))
         trvid = 1
         # print(traindf.head())
     else:
@@ -193,7 +197,7 @@ def readAnnotData():
     cursor.execute('SELECT name FROM sqlite_master WHERE name = "testannot"')
     if cursor.fetchall()[0][0] == 'testannot':
         testdf = pd.read_sql("SELECT * FROM testannot", connection)
-        print('Testing annotation table is present and contains {} frames'.format(testdf.shape[0]))
+        print('Testing annotation table is present and contains {} objects'.format(testdf.shape[0]))
         tsvid = 1
         # print(testdf.head())
     else:
@@ -202,43 +206,6 @@ def readAnnotData():
     if (trvid == 1) and (tsvid == 1):
         return traindf, testdf
     os.chdir(rootDir)
-
-def genImgFrmVid(df, tgtfld):
-    '''
-    Function to generate images from video paths in given folder
-    :param df:      Train/Test dataframe containing valid video paths
-    :param tgtfld:  Folder path where images needs to be saved
-    :param fldname: New folder name
-    :return:        N/A
-    '''
-    print(df.columns)
-
-    for index, row in df.iterrows():
-        if index == 0:  # Create directory for the first video and keep adding files for remaining videos
-            if os.path.exists(tgtfld):
-                shutil.rmtree(tgtfld)
-            os.mkdir(tgtfld)
-
-        print('Processing file ({}): {}'.format(index + 1, row['video_name']))
-        vidcap = cv2.VideoCapture(row['video_path'])
-
-        # setting window parameters
-        # cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow('Image', imwidth, imheight)
-        frame_count = 0
-
-        while(vidcap.isOpened()):
-            res, frame = vidcap.read()
-            if res == True:
-                filename = os.path.join(tgtfld, row['video_name'].split('.')[0] + '_{}.jpg'.format(frame_count))
-                cv2.imwrite(filename, frame)
-                frame_count += 1
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            else:
-                break
-        vidcap.release()
-        print('No. of images written for this video is {}'.format(frame_count))
 
 
 def miniBatchData(traindf, testdf, batches):
@@ -255,19 +222,94 @@ def miniBatchData(traindf, testdf, batches):
     testdf['batchno']   = [i for i in range(1 , batches+1) for vid in range(testVidNo)][:len(testdf)]
     return traindf, testdf
 
+def genYoloTrnDt(mddf, andf, tgtfld):
+    '''
+    Function to generate YOLO training data:
+     - Generate images from video paths in given folder, as YOLO can
+        train on video, it needs individual image files
+     - Generate text file containing annotation for individual image file
+        * Annotations should be scaled based on network size (height and width)
+        * Left top coordinates should be converted to centroid of the bounding box
+     - If the frame doesn't contain any annotation data, create an empty text file
+        This will be a negative sample
+     - Generate text file containing path of all the image file
+    :param mddf: Meta Data dataframe containing valid video paths
+    :param andf: Annotation Data dataframe containing bounding box coordinates
+    :param tgtfld: New folder name
+    :return:        N/A
+    '''
+    imgHt   =   1080
+    imgWd   =   1920
+    imglist = []
+
+    for index, row in mddf.iterrows():
+        if index == 0:  # Create directory for the first video and keep adding files for remaining videos
+            if os.path.exists(tgtfld):
+                shutil.rmtree(tgtfld)
+            os.mkdir(tgtfld)
+
+        print('Processing file ({}): {}'.format(index + 1, row['video_name']))
+        vidcap = cv2.VideoCapture(row['video_path'])
+
+        frame_count = 0
+
+        while(vidcap.isOpened()):
+            res, frame = vidcap.read()
+            if res == True:
+                vidfile = os.path.join(tgtfld, row['video_name'].split('.')[0] + '_{}.jpg'.format(frame_count))
+                cv2.imwrite(vidfile, frame)
+                print('Image File: {}'.format(vidfile))
+                annotfile = os.path.join(tgtfld, row['video_name'].split('.')[0] + '_{}.txt'.format(frame_count))
+                framedf = andf[(andf['video_name'] == row['video_name']) & (andf['frame_num'] == frame_count)].copy()
+                # Convert left top coordinates to centre coordinates
+                framedf['bb_lt_x'] = framedf['bb_lt_x'] + framedf['bb_width'] / 2
+                framedf['bb_lt_y'] = framedf['bb_lt_y'] - framedf['bb_height'] / 2
+                # Normalize the coordinates
+                framedf['bb_lt_x']   =   framedf['bb_lt_x']   / imgWd
+                framedf['bb_lt_y']   =   framedf['bb_lt_y']   / imgHt
+                framedf['bb_width']  =   framedf['bb_width']  / imgWd
+                framedf['bb_height'] =   framedf['bb_height'] / imgHt
+                file = open(annotfile, mode='w+')
+                # file.write(framedf.to_string(header=False, index=False))    # this option is generating extra spaces
+                file.writelines('{} {} {} {} {}\n'.format(line[6], line[2], line[3], line[4], line[5]) for line in framedf.values)
+                file.close()
+                print('Image File: {}'.format(annotfile))
+                imglist.append(vidfile)
+
+                frame_count += 1
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
+                break
+
+        print('No. of images written for this video is {}'.format(frame_count))
+        vidcap.release()
+    imgpath = os.path.join(tgtfld + '/image_path.txt')
+    file.open(imgpath, mode='w+')
+    file.writelines('{}\n'.format(line) for line in imglist)
+    file.close()
+
+
 
 if __name__ == '__main__':
-    vidFolder   = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'
-    annotFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/annotations'
-    dataFolder  = 'C:/DS_ML/Video_Analytics_YOLOv4/Database_n_Files'
     # loadMetaData(vidFolder, annotFolder, dispWrt='writedb')
     trainmd, testmd = readMetaData()
     # print('Training videos:\t{}\nTesting videos:\t{}'.format(trainmd.shape[0], testmd.shape[0]))
     # loadAnnotObj(df = trainmd, tabname = 'trainannot')
     # loadAnnotObj(df = testmd, tabname='testannot')
-    # trainad, testad = readAnnotData()
+    trainad, testad = readAnnotData()
     # print('Train data size:\t{}\nTest data size:\t{}'.format(trainad.shape[0], testad.shape[0]))
     trainmb, testmb = miniBatchData(traindf = trainmd, testdf = testmd, batches = 10)
     # print(trainmb[trainmb.batchno == 1], testmb[testmb.batchno == 1])
-    # genImgFrmVid(df=trainmb[trainmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'train'))
-    # genImgFrmVid(df=testmb[testmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'test'))
+    # # Get training image count for all the batches
+    # for i in range(11):
+    #     trvideos = trainmb[trainmb.batchno == i]['video_name']
+    #     print('Batch {} Image count: {}'.format(i,len(trainad[trainad.video_name.isin(trvideos)])))
+
+    genYoloTrnDt(mddf=trainmb[trainmb.batchno == 1], andf=trainad, tgtfld=os.path.join(dataFolder, 'train'))
+    # genYoloTrnDt(df=testmb[testmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'test'))
+
+
+
+
