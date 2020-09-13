@@ -258,7 +258,7 @@ def genYoloTrnDt(mddf, andf, tgtfld):
             if res == True:
                 vidfile = os.path.join(tgtfld, row['video_name'].split('.')[0] + '_{}.jpg'.format(frame_count))
                 cv2.imwrite(vidfile, frame)
-                print('Image File: {}'.format(vidfile))
+                # print('Image File: {}'.format(vidfile))
                 annotfile = os.path.join(tgtfld, row['video_name'].split('.')[0] + '_{}.txt'.format(frame_count))
                 framedf = andf[(andf['video_name'] == row['video_name']) & (andf['frame_num'] == frame_count)].copy()
                 # Convert left top coordinates to centre coordinates
@@ -273,22 +273,25 @@ def genYoloTrnDt(mddf, andf, tgtfld):
                 # file.write(framedf.to_string(header=False, index=False))    # this option is generating extra spaces
                 file.writelines('{} {} {} {} {}\n'.format(line[6], line[2], line[3], line[4], line[5]) for line in framedf.values)
                 file.close()
-                print('Image File: {}'.format(annotfile))
+                # print('Image File: {}'.format(annotfile))
                 imglist.append(vidfile)
 
                 frame_count += 1
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+
             else:
                 break
 
         print('No. of images written for this video is {}'.format(frame_count))
         vidcap.release()
+
     imgpath = os.path.join(tgtfld + '/image_path.txt')
-    file.open(imgpath, mode='w+')
+    file = open(imgpath, mode='w+')
     file.writelines('{}\n'.format(line) for line in imglist)
     file.close()
+    print('Image Path is written in the file {}'.format(imgpath))
 
 
 
@@ -309,7 +312,3 @@ if __name__ == '__main__':
 
     genYoloTrnDt(mddf=trainmb[trainmb.batchno == 1], andf=trainad, tgtfld=os.path.join(dataFolder, 'train'))
     # genYoloTrnDt(df=testmb[testmb.batchno == 1], tgtfld=os.path.join(dataFolder, 'test'))
-
-
-
-
