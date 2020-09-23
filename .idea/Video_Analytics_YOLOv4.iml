@@ -2,6 +2,8 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/YOLOv4/darknet/build/darknet/x64/data/test" />
+      <excludeFolder url="file://$MODULE_DIR$/YOLOv4/darknet/build/darknet/x64/data/train" />
       <excludeFolder url="file://$MODULE_DIR$/YOLOv4/darknet/build_win_release" />
       <excludeFolder url="file://$MODULE_DIR$/YOLOv4/darknet/include/darknet" />
       <excludeFolder url="file://$MODULE_DIR$/YOLOv4/darknet/share" />

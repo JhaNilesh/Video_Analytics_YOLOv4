@@ -23,11 +23,12 @@ cfgFile     =   'cfg\yolov4.cfg'
 weightPath  =   os.path.join(rootDir, 'Database_n_Files', 'yolov4.weights')
 detPath     =   os.path.join(rootDir, 'Database_n_Files')
 
-def detVidBB(vidPath, suffix='pretrain'):
+def detVidBB(vidPath, dbwrt='table', suffix='pretrain'):
     '''
     This function run YOLOv4 inference on video and saves detections data
     (i.e bounding box and confidence scores) in the database
     :param vidPath: Path of video file
+    :param dbwrt: Return annotations as dataframe or write in table. Possible values 'table' and 'retdf'
     :param suffix:  Table name suffix. Possible values 'pretrain' and 'posttrain'
     :return: Error Message if any
     '''
@@ -56,11 +57,16 @@ def detVidBB(vidPath, suffix='pretrain'):
 
     df = pd.DataFrame(finalArr, columns=['frameNo', 'object', 'confScore', 'left_x', 'top_y', 'width', 'height'])
 
-    tabName = vidPath.split('\\')[-1].split('.')[0] + '_'+ suffix
-    os.chdir('Database_n_Files')
-    connection = sqlite3.connect('videoAnalytics.db')                           # Open connection to database
-    df.to_sql(tabName, connection, if_exists='replace', index=False)            # Write detections in the table
-    os.chdir(rootDir)
+    if dbwrt == 'table':
+        tabName = vidPath.split('\\')[-1].split('.')[0] + '_'+ suffix
+        os.chdir('Database_n_Files')
+        connection = sqlite3.connect('videoAnalytics.db')                           # Open connection to database
+        df.to_sql(tabName, connection, if_exists='replace', index=False)            # Write detections in the table
+        os.chdir(rootDir)
+    elif dbwrt == 'retdf':
+        return df
+    else:
+        print("Annotations not saved")
 
 
 def saveInf(vidPath):
@@ -81,8 +87,10 @@ def saveInf(vidPath):
 if __name__ == '__main__':
 
     vidPath = os.path.join(rootDir, 'Database_n_Files', 'Test_Video.mp4')
-    # detVidBB(vidPath)
-    saveInf(vidPath)
+    annotdf = pd.DataFrame()
+    annotdf = detVidBB(vidPath, dbwrt='retdf')
+    print(annotdf.head())
+    # saveInf(vidPath)
 
 
 '''

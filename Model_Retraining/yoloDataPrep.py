@@ -16,9 +16,9 @@ from sklearn.model_selection import train_test_split
 import cv2
 import shutil
 
-vidFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'
-annotFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/annotations'
-dataFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/YOLOv4/darknet/build/darknet/x64/data'
+vidFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/videos'                      # convert to argument with default value
+annotFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/VIRAT_Dataset/annotations'               # convert to argument with default value
+dataFolder = 'C:/DS_ML/Video_Analytics_YOLOv4/YOLOv4/darknet/build/darknet/x64/data'    # convert to argument with default value
 
 def pathLookup(clip, lst):
     '''
@@ -100,7 +100,6 @@ def loadMetaData(videopath, annotpath, dispWrt='display'):
 
     else:
         print('Incorrect parameter value: {}'.format(dispWrt))
-
 
 def readMetaData():
     '''
@@ -207,7 +206,6 @@ def readAnnotData():
         return traindf, testdf
     os.chdir(rootDir)
 
-
 def miniBatchData(traindf, testdf, batches):
     '''
     This function can be used to divide large dataset into smaller chunks
@@ -224,7 +222,7 @@ def miniBatchData(traindf, testdf, batches):
 
 def genYoloTrnDt(mddf, andf, tgtfld):
     '''
-    Function to generate YOLO training data:
+    Function to generate YOLO training data:-
      - Generate images from video paths in given folder, as YOLO can
         train on video, it needs individual image files
      - Generate text file containing annotation for individual image file
@@ -238,8 +236,6 @@ def genYoloTrnDt(mddf, andf, tgtfld):
     :param tgtfld: New folder name
     :return:        N/A
     '''
-    imgHt   =   1080
-    imgWd   =   1920
     imglist = []
 
     for index, row in mddf.iterrows():
@@ -250,6 +246,9 @@ def genYoloTrnDt(mddf, andf, tgtfld):
 
         print('Processing file ({}): {}'.format(index + 1, row['video_name']))
         vidcap = cv2.VideoCapture(row['video_path'])
+        imgWd = vidcap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        imgHt = vidcap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        print('Width = {}, Height = {}'.format(imgWd, imgHt))
 
         frame_count = 0
 
@@ -263,7 +262,7 @@ def genYoloTrnDt(mddf, andf, tgtfld):
                 framedf = andf[(andf['video_name'] == row['video_name']) & (andf['frame_num'] == frame_count)].copy()
                 # Convert left top coordinates to centre coordinates
                 framedf['bb_lt_x'] = framedf['bb_lt_x'] + framedf['bb_width'] / 2
-                framedf['bb_lt_y'] = framedf['bb_lt_y'] - framedf['bb_height'] / 2
+                framedf['bb_lt_y'] = framedf['bb_lt_y'] + framedf['bb_height'] / 2
                 # Normalize the coordinates
                 framedf['bb_lt_x']   =   framedf['bb_lt_x']   / imgWd
                 framedf['bb_lt_y']   =   framedf['bb_lt_y']   / imgHt
@@ -271,7 +270,7 @@ def genYoloTrnDt(mddf, andf, tgtfld):
                 framedf['bb_height'] =   framedf['bb_height'] / imgHt
                 file = open(annotfile, mode='w+')
                 # file.write(framedf.to_string(header=False, index=False))    # this option is generating extra spaces
-                file.writelines('{} {} {} {} {}\n'.format(line[6], line[2], line[3], line[4], line[5]) for line in framedf.values)
+                file.writelines('{} {} {} {} {}\n'.format(0, line[2], line[3], line[4], line[5]) for line in framedf.values)
                 file.close()
                 # print('Image File: {}'.format(annotfile))
                 imglist.append(vidfile)
